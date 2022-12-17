@@ -1,0 +1,110 @@
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+//#include <stdlib.h>
+
+int main(void) {
+  int readClientfd;
+  int writeClientfd;
+  int ARRAY_SIZE = 28;
+  
+  char * inputFIFO = "/tmp/client100fifo";
+  mkfifo(inputFIFO, 0666);
+  char * outputFIFO = "/tmp/outputfifo";
+  mkfifo(outputFIFO, 0666);
+
+  // open input fifo on write
+  writeClientfd = open(inputFIFO, O_WRONLY);
+
+  // open output fifo on read
+  readClientfd = open(outputFIFO, O_RDONLY);
+  
+  //pID, callNum, numParam, Param1, Param2, Result, Stored Num
+  int clientInfo1[] = {0, 0, 0, 0, 0, 0, 0};
+  
+  //  client runs
+  printf("Enter 1 to send connect system call: ");
+  scanf("%d", &clientInfo1[1]); 
+  write(writeClientfd, &clientInfo1, ARRAY_SIZE); 
+  read(readClientfd, &clientInfo1, ARRAY_SIZE);
+  // while loop to enter requests to server
+  while(1){
+  printf("2-add 3-subtract 4-multiply 5-divide 6-store 7-recall 8-execute -1-terminate 10-ps call 0-exit\n"); 
+  printf("Enter a system call number: \n"); 
+  scanf("%d", &clientInfo1[1]);
+  printf("Enter the number of parameters: \n"); 
+  scanf("%d", &clientInfo1[2]);
+  
+  if(clientInfo1[1] > 1 && clientInfo1[1] < 6){
+  printf("First num: ");
+  scanf("%d", &clientInfo1[3]);
+  printf("Second num: ");
+  scanf("%d", &clientInfo1[4]);
+  write(writeClientfd, &clientInfo1, ARRAY_SIZE);
+  printf("The request has been sent to server\n");
+  read(readClientfd, &clientInfo1, ARRAY_SIZE);
+  printf("The result is %d\n", clientInfo1[5]);
+  } // if user enters sys call 2,3,4,5
+  
+  else if(clientInfo1[1] == 8){
+  printf("Executing in non-critical section...\n");
+  sleep(2);
+  printf("Executing in non-critical section...\n");
+  sleep(2);
+  printf("Executing in non-critical section...\n");
+  sleep(2);
+  printf("P call sent. waiting to get into critical section...\n");
+  write(writeClientfd, &clientInfo1, ARRAY_SIZE);
+  read(readClientfd, &clientInfo1, ARRAY_SIZE);
+  while(clientInfo1[5] != 1){
+  printf("Waiting for semaphore...");
+  sleep(3);
+  read(readClientfd, &clientInfo1, ARRAY_SIZE);
+  }
+  printf("Executing in critical section...\n");
+  sleep(2);
+  printf("Executing in critical section...\n");
+  sleep(2);
+  printf("Executing in critical section...\n");
+  sleep(2);
+  printf("V call sent. Leaving the critical section...\n");
+  clientInfo1[1] = 9;
+  write(writeClientfd, &clientInfo1, ARRAY_SIZE);
+  }
+  else if(clientInfo1[1] == 6){
+    printf("Enter the number to be stored: ");
+    scanf("%d", &clientInfo1[6]);
+    write(writeClientfd, &clientInfo1, ARRAY_SIZE);
+    printf("%d has been sent to be stored in the server\n", clientInfo1[6]);
+  }
+  else if(clientInfo1[1] == 7){
+  read(readClientfd, &clientInfo1, ARRAY_SIZE);
+  printf("The stored number was %d\n", clientInfo1[6]);
+  }
+  else if(clientInfo1[1] == 10){
+  	write(writeClientfd, &clientInfo1, ARRAY_SIZE);
+  	read(readClientfd, &clientInfo1, ARRAY_SIZE);
+  	printf("There are %d clients connected\n", clientInfo1[5]);
+  }
+  else if(clientInfo1[1] == -1){
+    write(writeClientfd, &clientInfo1, ARRAY_SIZE);
+    printf("Termination signal sent");
+    close(writeClientfd);
+    close(readClientfd);
+    return 0;
+  }
+  else if(clientInfo1[1] == 0){
+  
+    write(writeClientfd, &clientInfo1, ARRAY_SIZE);
+    read(readClientfd, &clientInfo1, ARRAY_SIZE);
+    printf("You have disconnected\n");
+    return 0;
+  }
+  
+  
+  } // while loop
+    return 0;
+}
